@@ -1,0 +1,96 @@
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.11.7"> </script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet">
+</script>
+<style>
+.blur {
+  filter:blur(5px);
+}
+.blur:hover {
+  filter:blur(0px);
+}
+.grey {
+  filter:grayscale(100%);
+}
+</style>
+<body>
+<button id="go">go</button>
+<button id="reset">undo</button>
+    <img id="dog" src="images/dog.jpg"/>
+    <img id="cat" src="images/cat.jpg"/>
+</body>
+<script>
+var fail = function(err) { console.log(err) }
+
+var model;
+
+// https://keras.io/applications/#mobilenet
+// Note that this model only supports the data format 'channels_last'
+(height, width, channels).
+// The default input size for this model is 224x224.
+const IMAGE_SIZE = 224;
+const OFFSET = tf.scalar(127.0);
+var preproc = function(img) {
+    return tf.tidy(function() {
+        let x1 = tf.fromPixels(img);
+        let x2 = tf.image.resizeBilinear(x1, [IMAGE_SIZE, IMAGE_SIZE], true).toFloat();
+        let x3 = x2.sub(OFFSET);
+        let x4 = x3.div(OFFSET);
+        let x5 = x4.expandDims();
+        return x5;
+    });
+}
+
+var classifyAll = function() {
+    $('img').each(function() {
+        let id = $(this).attr('id');
+        console.log(id);
+        let imgData = preproc(document.getElementById(id));
+        //fail(imgData);
+        let pred = model.predict(imgData).dataSync();
+        //console.log(pred);
+        if (pred[1] > pred[0]) {
+            $("#" + id).addClass("blur");
+        }
+    });
+}
+
+var classifyBatch = function() {
+    let ids = [];
+    let imgs = [];
+    $('img').each(function() {
+        let id = $(this).attr('id');
+        //console.log(id);
+        let imgData = preproc(document.getElementById(id));
+        //fail(imgData);
+        ids.push(id);
+        imgs.push(imgData);
+    });
+    let preds = model.predict(tf.tensor4d(imgs)).dataSync();
+    for (let i=0; i < ids.length; i++) {
+        console.log(pred[i]);
+        if (pred[i][1] > pred[i][0]) {
+            $("#" + ids[i]).addClass("blur");
+        }
+    };
+}
+
+var resetAll = function() {
+    $('img').each(function() {
+        let id = $(this).attr('id');
+        $("#" + id).removeClass("blur");
+    });
+}
+
+$(function() {
+   const modelURL = 'catsvsdogs/model.json';
+   tf.loadModel(modelURL).then(function(m) {
+      model = m;
+      $('#go').on('click', classifyAll);
+      $('#reset').on('click', resetAll);
+      model.predict(tf.zeros([1, IMAGE_SIZE, IMAGE_SIZE, 3])).dataSync(); // warm up
+      console.log('ready!');
+   }, fail);
+});
+</script>
+</html>
